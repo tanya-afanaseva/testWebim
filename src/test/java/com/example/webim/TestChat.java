@@ -7,6 +7,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
+import java.util.concurrent.TimeUnit;
 
 import static org.junit.Assert.*;
 
@@ -25,36 +26,56 @@ public class TestChat {
 
     @Test
     public void testSurvey() throws Exception {
+
+        driver.manage().timeouts().implicitlyWait(10, TimeUnit.SECONDS);
+
+        //test opening chat
         chatPage.open();
-        Thread.sleep(5000);
+        String windowMainPageHandle = driver.getWindowHandle();
         chatPage.openChat();
         driver.switchTo().window(
                 driver.getWindowHandles().stream()
-                        .filter(o -> !o.equals(driver.getWindowHandle()))
+                        .filter(o -> !o.equals(windowMainPageHandle))
                 .findAny().orElseThrow(() -> new IllegalStateException("Chat window was not opened!"))
         );
+        String windowChatPageHandle = driver.getWindowHandle();
         assertEquals( "Онлайн-консультант", driver.getTitle());
 
-        Thread.sleep(15000);
+        //test sending text messages
         String msg = RandomStringUtils.randomAlphanumeric(RandomUtils.nextInt(3, 11));
+
+
         chatPage.addText(msg);
         chatPage.sendMessage();
-        Thread.sleep(3000);
         assertEquals(msg, chatPage.getLastMessageText());
 
+        //test blank messages
         chatPage.addText("");
         chatPage.sendMessage();
-        Thread.sleep(3000);
         assertNotEquals("", chatPage.getLastMessageText());
 
-        chatPage.addFile("D:\\webim\\src\\test\\resources\\pic.jpg");
-        Thread.sleep(3000);
-
+        //test sending img
+        chatPage.addFile("resources\\pic.jpg");
         assertEquals("Отправил(а) файл pic.jpg", chatPage.getLastMessageText());
 
-        chatPage.closeChat();
-        assertEquals("https://demo-pro.webim.ru/", driver.getCurrentUrl());
+        //test rating operator
+        switchToPage(windowMainPageHandle, "Main window was not found!");
+        chatPage.addOperator(msg);
+        switchToPage(windowChatPageHandle, "Chat window was not found!");
+        chatPage.rateOperator();
+        assertFalse(chatPage.getSendRateButton().isDisplayed());
 
+        //test closing chat
+        chatPage.closeChat();
+
+    }
+
+    private void switchToPage(String windowMainPageHandle, String s) {
+        driver.switchTo().window(
+                driver.getWindowHandles().stream()
+                        .filter(windowMainPageHandle::equals)
+                        .findAny().orElseThrow(() -> new IllegalStateException(s))
+        );
     }
 
     @After
